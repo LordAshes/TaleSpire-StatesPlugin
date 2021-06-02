@@ -8,6 +8,7 @@ using UnityEngine.UI;
 using System;
 using System.Collections.Generic;
 using BepInEx.Configuration;
+using Newtonsoft.Json;
 
 namespace LordAshes
 {
@@ -17,16 +18,20 @@ namespace LordAshes
         // Plugin info
         public const string Name = "States Plug-In";
         public const string Guid = "org.lordashes.plugins.states";
-        public const string Version = "1.0.0.0";
+        public const string Version = "1.1.0.0";
 
         // Configuration
         private ConfigEntry<KeyboardShortcut> triggerKey { get; set; }
+        private ConfigEntry<UnityEngine.Color> baseColor { get; set; }
 
         // Content directory
         private string dir = UnityEngine.Application.dataPath.Substring(0, UnityEngine.Application.dataPath.LastIndexOf("/")) + "/TaleSpire_CustomData/";
 
         // Holds current creature states
         private Dictionary<CreatureGuid, string> creatureStates = new Dictionary<CreatureGuid, string>();
+
+        // Colorized keywords
+        private Dictionary<string, string> colorizations = new Dictionary<string, string>();
 
         /// <summary>
         /// Function for initializing plugin
@@ -37,6 +42,13 @@ namespace LordAshes
             UnityEngine.Debug.Log("Lord Ashes States Plugin Active.");
 
             triggerKey = Config.Bind("Hotkeys", "States Activation", new KeyboardShortcut(KeyCode.S, KeyCode.LeftControl));
+            baseColor = Config.Bind("Appearance", "Base Text Color", UnityEngine.Color.black);
+
+            if(System.IO.File.Exists(dir+"Config/"+Guid+"/ColorizedKeywords.json"))
+            {
+                string json = System.IO.File.ReadAllText(dir + "Config/" + Guid + "/ColorizedKeywords.json");
+                colorizations = JsonConvert.DeserializeObject<Dictionary<string, string>>(json);
+            }
         }
 
         /// <summary>
@@ -138,7 +150,7 @@ namespace LordAshes
                             creatureStateText.enableWordWrapping = true;
                             creatureStateText.alignment = TextAlignmentOptions.Center;
                             creatureStateText.autoSizeTextContainer = true;
-                            creatureStateText.color = UnityEngine.Color.black;
+                            creatureStateText.color = baseColor.Value;
                             creatureStateText.fontSize = 1;
                             creatureStateText.fontWeight = FontWeight.Bold;
                         }
@@ -150,6 +162,12 @@ namespace LordAshes
                         Debug.Log("Populating TextMeshPro");
                         creatureStateText.autoSizeTextContainer = false;
                         statParts[1] = statParts[1].Replace(",", "\r\n");
+                        if (colorizations.ContainsKey("<Default>")) { statParts[1] = "<Default>" + statParts[1]; }
+                        creatureStateText.richText = true;
+                        foreach (KeyValuePair<string, string> replacement in colorizations)
+                        {
+                            statParts[1] = statParts[1].Replace(replacement.Key, replacement.Value);
+                        }
                         creatureStateText.text = statParts[1];
                         int lines = statParts[1].Split('\r').Length;
                         creatureStateText.transform.position = new Vector3(creatureBlock.transform.position.x, 1.25f+(0.1f*lines), creatureBlock.transform.position.z);
