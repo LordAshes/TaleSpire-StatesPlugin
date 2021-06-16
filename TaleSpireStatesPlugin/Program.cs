@@ -19,7 +19,7 @@ namespace LordAshes
         // Plugin info
         public const string Name = "States Plug-In";
         public const string Guid = "org.lordashes.plugins.states";
-        public const string Version = "2.0.0.0";
+        public const string Version = "2.0.1.0";
 
         // Configuration
         private ConfigEntry<KeyboardShortcut> triggerKey { get; set; }
@@ -50,6 +50,14 @@ namespace LordAshes
                 string json = System.IO.File.ReadAllText(dir + "Config/" + Guid + "/ColorizedKeywords.json");
                 colorizations = JsonConvert.DeserializeObject<Dictionary<string, string>>(json);
             }
+
+            // Subscrive to Stat Messages
+            StatMessaging.Subscribe(StatesPlugin.Guid, HandleRequest);
+
+            // Post plugin on the TaleSpire main page
+            StateDetection.Initialize(this.GetType());
+
+
         }
 
         /// <summary>
@@ -60,8 +68,6 @@ namespace LordAshes
         {
             if (isBoardLoaded())
             {
-                StatMessaging.Check(HandleRequest);
-
                 SyncStealthMode();
 
                 if (triggerKey.Value.IsUp())
@@ -109,14 +115,21 @@ namespace LordAshes
                                         creatureStateText.fontSize = 1;
                                         creatureStateText.fontWeight = FontWeight.Bold;
                                     }
+                                    else
+                                    {
+                                        Debug.Log("Using Existing TextMeshPro");
+                                        creatureStateText = creatureBlock.GetComponent<TextMeshPro>();
+                                    }
                                     Debug.Log("Populating TextMeshPro");
                                     creatureStateText.autoSizeTextContainer = false;
                                     string content = change.value.Replace(",", "\r\n");
                                     if (colorizations.ContainsKey("<Default>")) { content = "<Default>" + content; }
                                     creatureStateText.richText = true;
+                                    Debug.Log("States: " + content);
                                     foreach (KeyValuePair<string, string> replacement in colorizations)
                                     {
                                         content = content.Replace(replacement.Key, replacement.Value);
+                                        Debug.Log("States: " + content+" (After replacing '"+ replacement.Key+"' with '"+replacement.Value+"')");
                                     }
                                     creatureStateText.text = content;
                                     int lines = content.Split('\r').Length;
@@ -130,7 +143,7 @@ namespace LordAshes
                             }
                         }
                     }
-                    catch(Exception) { ; }
+                    catch(Exception x ) { Debug.Log("Exception: "+x); }
                 }
             }
         }
@@ -140,12 +153,10 @@ namespace LordAshes
         /// </summary>
         public void SetRequest()
         {
-            Debug.Log("Setting asset...");
             CreatureBoardAsset asset;
             CreaturePresenter.TryGetAsset(LocalClient.SelectedCreatureId, out asset);
             if (asset != null)
             {
-                Debug.Log("Got selected asset...");
                 string states = StatMessaging.ReadInfo(asset.Creature.CreatureId, StatesPlugin.Guid);
 
                 SystemMessage.AskForTextInput("State", "Enter Creature State(s):", "OK", (newStates) =>
