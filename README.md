@@ -40,13 +40,12 @@ of the byte for the red color, green color, blue color and the alpha (FF=Opaque,
 
 ### Colorization Keywords
 
-Keywords can be colorized by providing a JSON colorization file. The JSON colorization file is expected in following folder:
+Keywords can be colorized by providing a JSON colorization file. The JSON colorization file is expected in following folder with
+the following file name:
 
 ```
-\Steam\steamapps\common\TaleSpire\TaleSpire_CustomData\Config\org.lordashes.plugins.states
+\Steam\steamapps\common\TaleSpire\TaleSpire_CustomData\Config\org.lordashes.plugins.states\ColorizedKeywords.json
 ```
-
-with the file name of *ColorizedKeywords.json*
 
 The contents of the file has the following format:
 
