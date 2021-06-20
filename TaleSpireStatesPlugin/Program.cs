@@ -14,12 +14,13 @@ namespace LordAshes
 {
     [BepInPlugin(Guid, Name, Version)]
     [BepInDependency(LordAshes.StatMessaging.Guid)]
+    [BepInDependency(RadialUI.RadialUIPlugin.Guid)]
     public class StatesPlugin : BaseUnityPlugin
     {
         // Plugin info
         public const string Name = "States Plug-In";
         public const string Guid = "org.lordashes.plugins.states";
-        public const string Version = "2.0.1.0";
+        public const string Version = "2.1.0.0";
 
         // Configuration
         private ConfigEntry<KeyboardShortcut> triggerKey { get; set; }
@@ -51,6 +52,21 @@ namespace LordAshes
                 colorizations = JsonConvert.DeserializeObject<Dictionary<string, string>>(json);
             }
 
+            // Add Info menu selection to main character menu
+            RadialUI.RadialSubmenu.EnsureMainMenuItem(RadialUI.RadialUIPlugin.Guid + ".Info",
+                                                        RadialUI.RadialSubmenu.MenuType.character,
+                                                        "Info",
+                                                        RadialUI.RadialSubmenu.GetIconFromFile(dir + "Images/Icons/Info.png")
+                                                     );
+
+            // Add Icons sub menu item
+            RadialUI.RadialSubmenu.CreateSubMenuItem(RadialUI.RadialUIPlugin.Guid + ".Info",
+                                                        "Icons",
+                                                        RadialUI.RadialSubmenu.GetIconFromFile(dir + "Images/Icons/States.png"),
+                                                        (cid,menu,mmi)=> { SetRequest(cid); },
+                                                        false
+                                                    );
+
             // Subscrive to Stat Messages
             StatMessaging.Subscribe(StatesPlugin.Guid, HandleRequest);
 
@@ -72,7 +88,7 @@ namespace LordAshes
 
                 if (triggerKey.Value.IsUp())
                 {
-                    SetRequest();
+                    SetRequest(LocalClient.SelectedCreatureId);
                 }
             }
         }
@@ -151,10 +167,10 @@ namespace LordAshes
         /// <summary>
         /// Method to write stats to the Creature Name
         /// </summary>
-        public void SetRequest()
+        public void SetRequest(CreatureGuid cid)
         {
             CreatureBoardAsset asset;
-            CreaturePresenter.TryGetAsset(LocalClient.SelectedCreatureId, out asset);
+            CreaturePresenter.TryGetAsset(cid, out asset);
             if (asset != null)
             {
                 string states = StatMessaging.ReadInfo(asset.Creature.CreatureId, StatesPlugin.Guid);
