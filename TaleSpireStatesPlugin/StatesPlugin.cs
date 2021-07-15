@@ -62,7 +62,8 @@ namespace LordAshes
                                                         "Icons",
                                                         FileAccessPlugin.Image.LoadSprite("States.png"),
                                                         (cid, menu, mmi) => { SetRequest(cid); },
-                                                        false
+                                                        false,
+                                                        null
                                                     );
 
             // Subscribe to Stat Messages
