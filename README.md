@@ -3,11 +3,14 @@
 This unofficial TaleSpire plugin is for adding lines of text above a mini
 to provide visible information such a mini states (e.g. poisoned, frozen, etc).
 
+Thanks to @AlbrechtWM for the latest States Plugin updates.
+
 ![Preview](https://i.imgur.com/TO8Cvjx.png)
 
 ## Change Log
 
 2.2.0: Improved text positioning and orientation
+
 2.2.0: Uses FileAccessPlugin for icons and colorization file access
 
 2.1.0: Added access to states from the mini radial menu. Select Info in the main menu and then states.
