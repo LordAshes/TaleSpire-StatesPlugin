@@ -46,7 +46,7 @@ namespace LordAshes
 
             if (System.IO.File.Exists(dir + "Config/" + Guid + "/ColorizedKeywords.json"))
             {
-                string json = System.IO.File.ReadAllText(dir + "Config/" + Guid + "/ColorizedKeywords.json");
+                string json = FileAccessPlugin.File.ReadAllText(dir + "Config/" + Guid + "/ColorizedKeywords.json");
                 colorizations = JsonConvert.DeserializeObject<Dictionary<string, string>>(json);
             }
 
@@ -54,13 +54,13 @@ namespace LordAshes
             RadialUI.RadialSubmenu.EnsureMainMenuItem(RadialUI.RadialUIPlugin.Guid + ".Info",
                                                         RadialUI.RadialSubmenu.MenuType.character,
                                                         "Info",
-                                                        RadialUI.RadialSubmenu.GetIconFromFile(dir + "Images/Icons/Info.png")
+                                                        FileAccessPlugin.Image.LoadSprite("Info.png")
                                                      );
 
             // Add Icons sub menu item
             RadialUI.RadialSubmenu.CreateSubMenuItem(RadialUI.RadialUIPlugin.Guid + ".Info",
                                                         "Icons",
-                                                        RadialUI.RadialSubmenu.GetIconFromFile(dir + "Images/Icons/States.png"),
+                                                        FileAccessPlugin.Image.LoadSprite("States.png"),
                                                         (cid, menu, mmi) => { SetRequest(cid); },
                                                         false
                                                     );
