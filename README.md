@@ -7,21 +7,30 @@ to provide visible information such a mini states (e.g. poisoned, frozen, etc).
 
 ## Change Log
 
+2.2.0: Improved text positioning and orientation
+2.2.0: Uses FileAccessPlugin for icons and colorization file access
+
 2.1.0: Added access to states from the mini radial menu. Select Info in the main menu and then states.
+
 2.0.2: Fixed Thunderstore dependency in manifest
+
 2.0.1: Plugin is now listed on the TaleSpire main page
+
 2.0.1: Fixed bug which prevented modifying existing states unless the states were first removed
+
 2.0.0: Rewrite to use Stat Messaging for higher compatibility with other plugins
+
 1.1.0: Added support for rich text
+
 1.1.0: Added keyword colorization json file
+
 1.1.0: Added base text exposed in configuration
+
 1.0.0: Initial release
 
 ## Install
 
-Install using R2ModMan or similar. Exapand the TaleSpire_CustomData into your TaleSpire game directory. The TaleSpire_CustomData is not
-part of the core game. It is used by Lord Ashes' plugins to hold files related to additional content and plugins. If the folder already
-exists (due to other plugins being installed) merge the contents togteher. This will make the necessary radial menu icons available.
+Install using R2ModMan or similar. 
 
 ## Usage
 
