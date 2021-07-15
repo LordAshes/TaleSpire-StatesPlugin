@@ -20,7 +20,7 @@ namespace LordAshes
         // Plugin info
         public const string Name = "States Plug-In";
         public const string Guid = "org.lordashes.plugins.states";
-        public const string Version = "2.1.0.0";
+        public const string Version = "2.2.0.0";
 
         // Configuration
         private ConfigEntry<KeyboardShortcut> triggerKey { get; set; }
