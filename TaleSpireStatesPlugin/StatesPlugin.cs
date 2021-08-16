@@ -13,6 +13,7 @@ using Newtonsoft.Json;
 namespace LordAshes
 {
     [BepInPlugin(Guid, Name, Version)]
+    [BepInDependency(LordAshes.FileAccessPlugin.Guid)]
     [BepInDependency(LordAshes.StatMessaging.Guid)]
     [BepInDependency(RadialUI.RadialUIPlugin.Guid)]
     public class StatesPlugin : BaseUnityPlugin
@@ -20,7 +21,7 @@ namespace LordAshes
         // Plugin info
         public const string Name = "States Plug-In";
         public const string Guid = "org.lordashes.plugins.states";
-        public const string Version = "2.2.0.0";
+        public const string Version = "2.3.0.0";
 
         // Configuration
         private ConfigEntry<KeyboardShortcut> triggerKey { get; set; }
@@ -92,7 +93,7 @@ namespace LordAshes
                 {
                     try
                     {
-                        GameObject creatureBlock = GameObject.Find(asset.Creature.CreatureId + ".StatesBlock");
+                        GameObject creatureBlock = GameObject.Find("Effect:"+asset.Creature.CreatureId + ".StatesBlock");
                         if (creatureBlock != null)
                         {
 
@@ -151,7 +152,7 @@ namespace LordAshes
                             {
                                 case StatMessaging.ChangeType.added:
                                 case StatMessaging.ChangeType.modified:
-                                    GameObject creatureBlock = GameObject.Find(asset.Creature.CreatureId + ".StatesBlock");
+                                    GameObject creatureBlock = GameObject.Find("Effect:"+asset.Creature.CreatureId + ".StatesBlock");
                                     if (creatureBlock == null)
                                     {
                                         if (asset.CreatureLoaders[0].LoadedAsset != null)
@@ -171,7 +172,7 @@ namespace LordAshes
 
                                 case StatMessaging.ChangeType.removed:
                                     Debug.Log("Removing States Block for creature '" + change.cid + "'");
-                                    GameObject.Destroy(GameObject.Find(asset.Creature.CreatureId + ".StatesBlock"));
+                                    GameObject.Destroy(GameObject.Find("Effect:"+asset.Creature.CreatureId + ".StatesBlock"));
                                     break;
                             }
                         }
@@ -185,7 +186,7 @@ namespace LordAshes
         {
             Debug.Log("Creating CreatureBlock GameObject");
 
-            if (GameObject.Find(asset.Creature.CreatureId + ".StatesBlock") != null)
+            if (GameObject.Find("Effect:"+asset.Creature.CreatureId + ".StatesBlock") != null)
             {
                 Debug.Log("StatesText already exists.  Ignoring duplicate");
                 creatureStateText = null;
@@ -193,7 +194,7 @@ namespace LordAshes
                 return; //we have a duplicate
             }
 
-            creatureBlock = new GameObject(asset.Creature.CreatureId + ".StatesBlock");
+            creatureBlock = new GameObject("Effect:"+asset.Creature.CreatureId + ".StatesBlock");
 
             Vector3 tempV3;
 
@@ -289,7 +290,7 @@ namespace LordAshes
                 // Sync Hidden Status
                 try
                 {
-                    GameObject block = GameObject.Find(asset.Creature.CreatureId + ".StatesBlock");
+                    GameObject block = GameObject.Find("Effect:"+asset.Creature.CreatureId + ".StatesBlock");
                     if (block != null)
                     {
                         if (asset.Creature.IsExplicitlyHidden == true && block.GetComponent<TextMeshPro>().enabled == true)
