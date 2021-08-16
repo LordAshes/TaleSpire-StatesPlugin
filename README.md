@@ -9,6 +9,8 @@ Thanks to @AlbrechtWM for the latest States Plugin updates.
 
 ## Change Log
 
+2.3.0: Changed States Block object name to have a Effect prefix to increase compatebility with other plugins
+
 2.2.0: Improved text positioning and orientation
 
 2.2.0: Uses FileAccessPlugin for icons and colorization file access
