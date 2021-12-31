@@ -1,14 +1,11 @@
-﻿using UnityEngine;
-using UnityEngine.Rendering.PostProcessing;
-using BepInEx;
-using Bounce.Unmanaged;
-using System.Linq;
-using TMPro;
-using UnityEngine.UI;
-using System;
+﻿using System;
 using System.Collections.Generic;
+
+using BepInEx;
 using BepInEx.Configuration;
 using Newtonsoft.Json;
+using TMPro;
+using UnityEngine;
 
 namespace LordAshes
 {
@@ -21,17 +18,17 @@ namespace LordAshes
         // Plugin info
         public const string Name = "States Plug-In";
         public const string Guid = "org.lordashes.plugins.states";
-        public const string Version = "2.3.0.0";
+        public const string Version = "2.4.0.0";
 
         // Configuration
         private ConfigEntry<KeyboardShortcut> triggerKey { get; set; }
         private ConfigEntry<UnityEngine.Color> baseColor { get; set; }
-        private Queue<StatMessaging.Change> backlogChangeQueue = new Queue<StatMessaging.Change>();
 
         // Content directory
         private string dir = UnityEngine.Application.dataPath.Substring(0, UnityEngine.Application.dataPath.LastIndexOf("/")) + "/TaleSpire_CustomData/";
 
-        // Colorized keywords
+        // Internal Variables
+        private Queue<StatMessaging.Change> backlogChangeQueue = new Queue<StatMessaging.Change>();
         private Dictionary<string, string> colorizations = new Dictionary<string, string>();
 
         /// <summary>
@@ -40,7 +37,7 @@ namespace LordAshes
         /// </summary>
         void Awake()
         {
-            UnityEngine.Debug.Log("Lord Ashes States Plugin Active.");
+            UnityEngine.Debug.Log("States Plugin: Active.");
 
             triggerKey = Config.Bind("Hotkeys", "States Activation", new KeyboardShortcut(KeyCode.S, KeyCode.LeftControl));
             baseColor = Config.Bind("Appearance", "Base Text Color", UnityEngine.Color.black);
@@ -60,7 +57,7 @@ namespace LordAshes
 
             // Add Icons sub menu item
             RadialUI.RadialSubmenu.CreateSubMenuItem(RadialUI.RadialUIPlugin.Guid + ".Info",
-                                                        "Icons",
+                                                        "States",
                                                         FileAccessPlugin.Image.LoadSprite("States.png"),
                                                         (cid, menu, mmi) => { SetRequest(cid); },
                                                         false,
@@ -100,9 +97,8 @@ namespace LordAshes
                             creatureBlock.transform.rotation = Quaternion.LookRotation(creatureBlock.transform.position - Camera.main.transform.position);
 
                             TextMeshPro creatureStateText = creatureBlock.GetComponent<TextMeshPro>();
-                            //creatureStateText.transform.position = creatureBlock.transform.position;
+                            if (creatureStateText == null) { creatureStateText = creatureBlock.AddComponent<TextMeshPro>(); }
                             creatureStateText.transform.rotation = creatureBlock.transform.rotation;
-
                             creatureStateText.transform.position = new Vector3(asset.CreatureLoaders[0].LoadedAsset.transform.position.x, calculateYMax(asset) + creatureStateText.preferredHeight, asset.CreatureLoaders[0].LoadedAsset.transform.position.z);
                         }
                     }
@@ -116,16 +112,26 @@ namespace LordAshes
                     CreatureBoardAsset asset;
                     CreaturePresenter.TryGetAsset(tempChange.cid, out asset);
 
-                    if (asset.CreatureLoaders[0].LoadedAsset == null) //still not ready
-                        break;
-                    else
+                    if (asset != null)
                     {
-                        backlogChangeQueue.Dequeue(); //pop the next one out of the queue
+                        if (asset.CreatureLoaders[0].LoadedAsset == null)
+                        {
+                            //still not ready
+                            break;
+                        }
+                        else
+                        {
+                            //pop the next one out of the queue
+                            backlogChangeQueue.Dequeue();
 
-                        TextMeshPro tempTMP = null;
-                        GameObject tempGO = null;
-                        createNewCreatureStateText(out tempTMP, out tempGO, asset);
-                        populateCreatureStateText(tempTMP, tempChange, asset);
+                            TextMeshPro tempTMP = null;
+                            GameObject tempGO = null;
+
+                            Debug.Log("States Plugin: Processing Queued Request = Creature ID: " + tempChange.cid + ", Action: " + tempChange.action + ", Key: " + tempChange.key + ", Previous Value: " + tempChange.previous + ", New Value: " + tempChange.value);
+
+                            createNewCreatureStateText(out tempTMP, out tempGO, asset);
+                            populateCreatureStateText(tempTMP, tempChange, asset);
+                        }
                     }
                 }
             }
@@ -136,9 +142,13 @@ namespace LordAshes
             foreach (StatMessaging.Change change in changes)
             {
                 if (change == null)
-                    Debug.Log("ERROR: StatMessaging change was NULL;");
+                {
+                    Debug.Log("States Plugin: ERROR: StatMessaging change was NULL;");
+                }
                 else
-                    Debug.Log("StatesPlugin-HandleRequest, Creature ID: " + change.cid + ", Action: " + change.action + ", Key: " + change.key + ", Previous Value: " + change.previous + ", New Value: " + change.value);
+                {
+                    Debug.Log("States Plugin: Handle Request, Creature ID: " + change.cid + ", Action: " + change.action + ", Key: " + change.key + ", Previous Value: " + change.previous + ", New Value: " + change.value);
+                }
                 if (change.key == StatesPlugin.Guid)
                 {
                     try
@@ -147,34 +157,23 @@ namespace LordAshes
                         CreaturePresenter.TryGetAsset(change.cid, out asset);
                         if (asset != null)
                         {
-                            TextMeshPro creatureStateText = null;
                             switch (change.action)
                             {
                                 case StatMessaging.ChangeType.added:
                                 case StatMessaging.ChangeType.modified:
-                                    GameObject creatureBlock = GameObject.Find("Effect:"+asset.Creature.CreatureId + ".StatesBlock");
-                                    if (creatureBlock == null)
-                                    {
-                                        if (asset.CreatureLoaders[0].LoadedAsset != null)
-                                            createNewCreatureStateText(out creatureStateText, out creatureBlock, asset);
-                                        else
-                                            backlogChangeQueue.Enqueue(change);
-                                    }
-                                    else
-                                    {
-                                        Debug.Log("Using Existing TextMeshPro");
-                                        creatureStateText = creatureBlock.GetComponent<TextMeshPro>();
-                                    }
-
-                                    if (creatureBlock != null)
-                                        populateCreatureStateText(creatureStateText, change, asset);
+                                    Debug.Log("States Plugin: Updating States Block for creature '" + change.cid + "'");
+                                    backlogChangeQueue.Enqueue(change);
                                     break;
 
                                 case StatMessaging.ChangeType.removed:
-                                    Debug.Log("Removing States Block for creature '" + change.cid + "'");
+                                    Debug.Log("States Plugin: Removing States Block for creature '" + change.cid + "'");
                                     GameObject.Destroy(GameObject.Find("Effect:"+asset.Creature.CreatureId + ".StatesBlock"));
                                     break;
                             }
+                        }
+                        else
+                        {
+                            Debug.Log("States Plugin: Received States update for invalid asset (" + change.cid + ")");
                         }
                     }
                     catch (Exception x) { Debug.Log("Exception: " + x); }
@@ -184,55 +183,101 @@ namespace LordAshes
 
         private void createNewCreatureStateText(out TextMeshPro creatureStateText, out GameObject creatureBlock, CreatureBoardAsset asset)
         {
-            Debug.Log("Creating CreatureBlock GameObject");
 
             if (GameObject.Find("Effect:"+asset.Creature.CreatureId + ".StatesBlock") != null)
             {
-                Debug.Log("StatesText already exists.  Ignoring duplicate");
-                creatureStateText = null;
-                creatureBlock = null;
-                return; //we have a duplicate
+                // Use Existing States Text
+                Debug.Log("States Plugin: StatesText already exists.");
+                creatureBlock = GameObject.Find("Effect:" + asset.Creature.CreatureId + ".StatesBlock"); ;
+                creatureStateText = creatureBlock.GetComponentInChildren<TextMeshPro>();
+                return;
             }
 
-            creatureBlock = new GameObject("Effect:"+asset.Creature.CreatureId + ".StatesBlock");
+            // Create New States Text 
+            Debug.Log("States Plugin: Creating CreatureBlock GameObject");
+            creatureBlock = new GameObject("Effect:" + asset.Creature.CreatureId + ".StatesBlock");
 
-            Vector3 tempV3;
+            Debug.Log("States Plugin: Checking Source");
+            if (asset != null)
+            {
+                if (asset.CreatureLoaders[0] != null)
+                {
+                    if (asset.CreatureLoaders[0].LoadedAsset != null)
+                    {
+                        if (asset.CreatureLoaders[0].LoadedAsset.transform != null)
+                        {
+                            Debug.Log("States Plugin: Creating Creature Block");
 
-            tempV3 = new Vector3(asset.CreatureLoaders[0].LoadedAsset.transform.position.x, calculateYMax(asset), asset.CreatureLoaders[0].LoadedAsset.transform.position.z);
+                            Vector3 pos = asset.CreatureLoaders[0].LoadedAsset.transform.position;
+                            Vector3 rot = asset.CreatureLoaders[0].LoadedAsset.transform.eulerAngles;
 
-            creatureBlock.transform.position = tempV3;
-            creatureBlock.transform.rotation = Quaternion.LookRotation(creatureBlock.transform.position - Camera.main.transform.position);
+                            if (creatureBlock != null)
+                            {
+                                Debug.Log("States Plugin: Applying Creature Block Position And Rotation");
 
-            creatureBlock.transform.SetParent(asset.CreatureLoaders[0].LoadedAsset.transform);
+                                creatureBlock.transform.position = new Vector3(pos.x, calculateYMax(asset), pos.z);
+                                creatureBlock.transform.rotation = Quaternion.LookRotation(creatureBlock.transform.position - Camera.main.transform.position);
+                                creatureBlock.transform.SetParent(asset.CreatureLoaders[0].LoadedAsset.transform);
 
-            Debug.Log("Creating TextMeshPro");
-            creatureStateText = creatureBlock.AddComponent<TextMeshPro>();
-            creatureStateText.transform.rotation = creatureBlock.transform.rotation;
-            creatureStateText.textStyle = TMP_Style.NormalStyle;
-            creatureStateText.enableWordWrapping = true;
-            creatureStateText.alignment = TextAlignmentOptions.Center;
-            creatureStateText.autoSizeTextContainer = true;
-            creatureStateText.color = baseColor.Value;
-            creatureStateText.fontSize = 1;
-            creatureStateText.fontWeight = FontWeight.Bold;
-            creatureStateText.isTextObjectScaleStatic = true;
+                                Debug.Log("States Plugin: Creating StatesText (TextMeshPro)");
+
+                                creatureStateText = creatureBlock.AddComponent<TextMeshPro>();
+
+                                Debug.Log("States Plugin: Applying StatesText (TextMeshPro) Properties");
+                                creatureStateText.transform.rotation = creatureBlock.transform.rotation;
+                                creatureStateText.textStyle = TMP_Style.NormalStyle;
+                                creatureStateText.enableWordWrapping = true;
+                                creatureStateText.alignment = TextAlignmentOptions.Center;
+                                creatureStateText.autoSizeTextContainer = true;
+                                creatureStateText.color = baseColor.Value;
+                                creatureStateText.fontSize = 1;
+                                creatureStateText.fontWeight = FontWeight.Bold;
+                                creatureStateText.isTextObjectScaleStatic = true;
+                            }
+                            else
+                            {
+                                Debug.Log("States Plugin: Newly Create CreatureBlock Is Null");
+                                creatureStateText = null;
+                            }
+                        }
+                        else
+                        {
+                            Debug.Log("States Plugin: Invalid Transform Provided");
+                            creatureStateText = null;
+                        }
+                    }
+                    else
+                    {
+                        Debug.Log("States Plugin: Invalid Creature Loader Load Asset Provided");
+                        creatureStateText = null;
+                    }
+                }
+                else
+                {
+                    Debug.Log("States Plugin: Invalid Creature Loader Provided");
+                    creatureStateText = null;
+                }
+            }
+            else
+            {
+                Debug.Log("States Plugin: Invalid Asset Provided");
+                creatureStateText = null;
+            }
         }
 
         private void populateCreatureStateText(TextMeshPro creatureStateText, StatMessaging.Change change, CreatureBoardAsset asset)
         {
-            if (creatureStateText == null)
-                return;
+            if (creatureStateText == null) { return; }
 
-            Debug.Log("Populating TextMeshPro");
+            Debug.Log("States Plugin: Populating StatesText (TextMeshPro)");
+
             creatureStateText.autoSizeTextContainer = false;
             string content = change.value.Replace(",", "\r\n");
             if (colorizations.ContainsKey("<Default>")) { content = "<Default>" + content; }
             creatureStateText.richText = true;
-            //Debug.Log("States: " + content);
             foreach (KeyValuePair<string, string> replacement in colorizations)
             {
                 content = content.Replace(replacement.Key, replacement.Value);
-                //Debug.Log("States: " + content + " (After replacing '" + replacement.Key + "' with '" + replacement.Value + "')");
             }
 
             creatureStateText.text = content;
@@ -243,19 +288,32 @@ namespace LordAshes
 
         private float calculateYMax(CreatureBoardAsset asset)
         {
-            float yMax = 0;
-            //Debug.Log("CreatureLoader AssetLoader Count: " + asset.CreatureLoaders.Length);
-            yMax = asset.CreatureLoaders[0].LoadedAsset.GetComponent<MeshRenderer>().bounds.max.y;
+            float yMax = 1.0f;
 
-            GameObject cmpGO = GameObject.Find("CustomContent:" + asset.Creature.CreatureId);
-            if (cmpGO != null)
+            try
             {
-                SkinnedMeshRenderer tempSMR = cmpGO.GetComponentInChildren<SkinnedMeshRenderer>();
-                if (tempSMR != null)
+
+                if (asset.CreatureLoaders[0].LoadedAsset.GetComponentInChildren<MeshRenderer>() != null)
                 {
-                    yMax = Mathf.Max(yMax, tempSMR.bounds.max.y);
+                    yMax = asset.CreatureLoaders[0].LoadedAsset.GetComponent<MeshRenderer>().bounds.max.y;
+                }
+                else if (asset.CreatureLoaders[0].LoadedAsset.GetComponentInChildren<SkinnedMeshRenderer>() != null)
+                {
+                    yMax = asset.CreatureLoaders[0].LoadedAsset.GetComponent<SkinnedMeshRenderer>().bounds.max.y;
+                }
+
+                // Legacy CMP Support
+                GameObject cmpGO = GameObject.Find("CustomContent:" + asset.Creature.CreatureId);
+                if (cmpGO.GetComponentInChildren<MeshRenderer>() != null)
+                {
+                    yMax = Math.Max(yMax,cmpGO.GetComponent<MeshRenderer>().bounds.max.y);
+                }
+                else if (cmpGO.GetComponentInChildren<SkinnedMeshRenderer>() != null)
+                {
+                    yMax = Math.Max(yMax,cmpGO.GetComponent<SkinnedMeshRenderer>().bounds.max.y);
                 }
             }
+            catch (Exception) { ; }
 
             return yMax;
         }
