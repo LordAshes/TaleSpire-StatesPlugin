@@ -37,6 +37,7 @@ Install using R2ModMan or similar.
 The R2ModMan configuration provides a number of settings to customize the features of the plugin:
 
 ``Base Text Size`` = Indicates the font size of the text above the asset. Data type: Float. Default: 2.0
+
 ``Height Offset Method`` = Determines how the position of the text is calculated.
 ```
 FixedOffset = Always at a specific height determined by the offsetValue value
