@@ -3,6 +3,7 @@ using System.Collections.Generic;
 
 using BepInEx;
 using BepInEx.Configuration;
+using HarmonyLib;
 using Newtonsoft.Json;
 using TMPro;
 using UnityEngine;
@@ -13,12 +14,12 @@ namespace LordAshes
     [BepInDependency(LordAshes.FileAccessPlugin.Guid)]
     [BepInDependency(LordAshes.StatMessaging.Guid)]
     [BepInDependency(RadialUI.RadialUIPlugin.Guid)]
-    public class StatesPlugin : BaseUnityPlugin
+    public partial class StatesPlugin : BaseUnityPlugin
     {
         // Plugin info
         public const string Name = "States Plug-In";
         public const string Guid = "org.lordashes.plugins.states";
-        public const string Version = "2.4.0.0";
+        public const string Version = "2.5.1.0";
 
         // Configuration
         private ConfigEntry<KeyboardShortcut> triggerKey { get; set; }
@@ -30,6 +31,17 @@ namespace LordAshes
         // Internal Variables
         private Queue<StatMessaging.Change> backlogChangeQueue = new Queue<StatMessaging.Change>();
         private Dictionary<string, string> colorizations = new Dictionary<string, string>();
+        private float baseSize = 16.0f;
+        private OffsetMethod offsetMethod = OffsetMethod.boundsOffset;
+        private float offsetValue = 1.0f;
+
+        public enum OffsetMethod
+        {
+            fixedOffset = 0,
+            baseScaleFixedOffet,
+            headHookMultiplierOffset,
+            boundsOffset
+        }
 
         /// <summary>
         /// Function for initializing plugin
@@ -39,8 +51,14 @@ namespace LordAshes
         {
             UnityEngine.Debug.Log("States Plugin: Active.");
 
+            new Harmony(Guid).PatchAll();
+
             triggerKey = Config.Bind("Hotkeys", "States Activation", new KeyboardShortcut(KeyCode.S, KeyCode.LeftControl));
             baseColor = Config.Bind("Appearance", "Base Text Color", UnityEngine.Color.black);
+            baseSize = Config.Bind("Appearance", "Base Text Size", 2.0f).Value;
+
+            offsetMethod = Config.Bind("Settings", "Height Offset Method", OffsetMethod.boundsOffset).Value;
+            offsetValue = Config.Bind("Settings", "Height Offset Value", 1.0f).Value;
 
             if (System.IO.File.Exists(dir + "Config/" + Guid + "/ColorizedKeywords.json"))
             {
@@ -68,7 +86,7 @@ namespace LordAshes
             StatMessaging.Subscribe(StatesPlugin.Guid, HandleRequest);
 
             // Post plugin on the TaleSpire main page
-            StateDetection.Initialize(this.GetType());
+            Utility.Initialize(this.GetType());
         }
 
         /// <summary>
@@ -86,6 +104,24 @@ namespace LordAshes
                     SetRequest(LocalClient.SelectedCreatureId);
                 }
 
+                /*
+                if(Input.GetKeyDown(KeyCode.Q))
+                {
+                    CreatureBoardAsset asset;
+                    CreaturePresenter.TryGetAsset(LocalClient.SelectedCreatureId, out asset);
+                    if (asset != null)
+                    {
+                        Debug.Log("Creature Name: " + StatMessaging.GetCreatureName(asset));
+                        Debug.Log("Creature Cid:  " + asset.Creature.CreatureId);
+                        Debug.Log("Creature Scale:" + asset.CreatureScale.ToString());
+                        Debug.Log("Creature Fix:  " + offsetValue);
+                        Debug.Log("Creature SBFix:" + asset.CreatureScale*offsetValue);
+                        Debug.Log("Creature HHFix:" + asset.HookHead.position.y * offsetValue);
+                        Debug.Log("Creature Offset: " + calculateYPos(asset, true));
+                    }
+                }
+                */
+
                 foreach (CreatureBoardAsset asset in CreaturePresenter.AllCreatureAssets)
                 {
                     try
@@ -99,7 +135,7 @@ namespace LordAshes
                             TextMeshPro creatureStateText = creatureBlock.GetComponent<TextMeshPro>();
                             if (creatureStateText == null) { creatureStateText = creatureBlock.AddComponent<TextMeshPro>(); }
                             creatureStateText.transform.rotation = creatureBlock.transform.rotation;
-                            creatureStateText.transform.position = new Vector3(asset.CreatureLoaders[0].LoadedAsset.transform.position.x, calculateYMax(asset) + creatureStateText.preferredHeight, asset.CreatureLoaders[0].LoadedAsset.transform.position.z);
+                            creatureStateText.transform.position = new Vector3(asset.CreatureRoot.transform.position.x, calculateYPos(asset) + creatureStateText.preferredHeight, asset.CreatureRoot.transform.position.z);
                         }
                     }
                     catch (Exception) { }
@@ -200,61 +236,53 @@ namespace LordAshes
             Debug.Log("States Plugin: Checking Source");
             if (asset != null)
             {
-                if (asset.CreatureLoaders[0] != null)
+                if (asset.CreatureRoot != null)
                 {
-                    if (asset.CreatureLoaders[0].LoadedAsset != null)
+                    if (asset.CreatureRoot.transform != null)
                     {
-                        if (asset.CreatureLoaders[0].LoadedAsset.transform != null)
+                        Debug.Log("States Plugin: Creating Creature Block");
+
+                        Vector3 pos = asset.CreatureRoot.transform.position;
+                        Vector3 rot = asset.CreatureRoot.transform.eulerAngles;
+
+                        if (creatureBlock != null)
                         {
-                            Debug.Log("States Plugin: Creating Creature Block");
+                            Debug.Log("States Plugin: Applying Creature Block Position And Rotation");
 
-                            Vector3 pos = asset.CreatureLoaders[0].LoadedAsset.transform.position;
-                            Vector3 rot = asset.CreatureLoaders[0].LoadedAsset.transform.eulerAngles;
+                            creatureBlock.transform.position = Vector3.zero;
+                            creatureBlock.transform.eulerAngles = Vector3.zero;
 
-                            if (creatureBlock != null)
-                            {
-                                Debug.Log("States Plugin: Applying Creature Block Position And Rotation");
+                            Debug.Log("States Plugin: Creating StatesText (TextMeshPro)");
 
-                                creatureBlock.transform.position = new Vector3(pos.x, calculateYMax(asset), pos.z);
-                                creatureBlock.transform.rotation = Quaternion.LookRotation(creatureBlock.transform.position - Camera.main.transform.position);
-                                creatureBlock.transform.SetParent(asset.CreatureLoaders[0].LoadedAsset.transform);
+                            creatureStateText = creatureBlock.AddComponent<TextMeshPro>();
 
-                                Debug.Log("States Plugin: Creating StatesText (TextMeshPro)");
-
-                                creatureStateText = creatureBlock.AddComponent<TextMeshPro>();
-
-                                Debug.Log("States Plugin: Applying StatesText (TextMeshPro) Properties");
-                                creatureStateText.transform.rotation = creatureBlock.transform.rotation;
-                                creatureStateText.textStyle = TMP_Style.NormalStyle;
-                                creatureStateText.enableWordWrapping = true;
-                                creatureStateText.alignment = TextAlignmentOptions.Center;
-                                creatureStateText.autoSizeTextContainer = true;
-                                creatureStateText.color = baseColor.Value;
-                                creatureStateText.fontSize = 1;
-                                creatureStateText.fontWeight = FontWeight.Bold;
-                                creatureStateText.isTextObjectScaleStatic = true;
-                            }
-                            else
-                            {
-                                Debug.Log("States Plugin: Newly Create CreatureBlock Is Null");
-                                creatureStateText = null;
-                            }
+                            Debug.Log("States Plugin: Applying StatesText (TextMeshPro) Properties");
+                            creatureStateText.transform.position = Vector3.zero;
+                            creatureStateText.transform.eulerAngles = Vector3.zero;
+                            creatureStateText.textStyle = TMP_Style.NormalStyle;
+                            creatureStateText.enableWordWrapping = true;
+                            creatureStateText.alignment = TextAlignmentOptions.Center;
+                            creatureStateText.autoSizeTextContainer = true;
+                            creatureStateText.color = baseColor.Value;
+                            creatureStateText.fontSize = 1;
+                            creatureStateText.fontWeight = FontWeight.Bold;
+                            creatureStateText.isTextObjectScaleStatic = true;
                         }
                         else
                         {
-                            Debug.Log("States Plugin: Invalid Transform Provided");
+                            Debug.Log("States Plugin: Newly Create CreatureBlock Is Null");
                             creatureStateText = null;
                         }
                     }
                     else
                     {
-                        Debug.Log("States Plugin: Invalid Creature Loader Load Asset Provided");
+                        Debug.Log("States Plugin: Invalid Transform Provided");
                         creatureStateText = null;
                     }
                 }
                 else
                 {
-                    Debug.Log("States Plugin: Invalid Creature Loader Provided");
+                    Debug.Log("States Plugin: Invalid Creature Root Provided");
                     creatureStateText = null;
                 }
             }
@@ -275,6 +303,8 @@ namespace LordAshes
             string content = change.value.Replace(",", "\r\n");
             if (colorizations.ContainsKey("<Default>")) { content = "<Default>" + content; }
             creatureStateText.richText = true;
+            creatureStateText.fontSize = baseSize;
+            creatureStateText.alignment = TextAlignmentOptions.Bottom;
             foreach (KeyValuePair<string, string> replacement in colorizations)
             {
                 content = content.Replace(replacement.Key, replacement.Value);
@@ -283,39 +313,95 @@ namespace LordAshes
             creatureStateText.text = content;
             creatureStateText.autoSizeTextContainer = true;
 
-            creatureStateText.transform.position = new Vector3(asset.CreatureLoaders[0].LoadedAsset.transform.position.x, calculateYMax(asset) + creatureStateText.preferredHeight, asset.CreatureLoaders[0].LoadedAsset.transform.position.z);
+            creatureStateText.transform.position = new Vector3(asset.CreatureRoot.transform.position.x, calculateYPos(asset) + creatureStateText.preferredHeight, asset.CreatureRoot.transform.position.z);
         }
 
-        private float calculateYMax(CreatureBoardAsset asset)
+        private float calculateYPos(CreatureBoardAsset asset, bool diagnostic = false)
         {
-            float yMax = 1.0f;
+            float yMin = 1000.0f;
+            float yMax = 0.0f;
 
             try
             {
+                switch(offsetMethod)
+                {
+                    case OffsetMethod.fixedOffset:
+                        yMin = 0;
+                        yMax = 1;
+                        break;
+                    case OffsetMethod.baseScaleFixedOffet:
+                        yMin = 0;
+                        yMax = 1 * asset.CreatureScale;
+                        break;
+                    case OffsetMethod.headHookMultiplierOffset:
+                        yMin = 0;
+                        yMax = asset.HookHead.position.y;
+                        break;
+                    case OffsetMethod.boundsOffset:
+                        if (asset.CreatureLoaders[0].LoadedAsset.GetComponentInChildren<MeshFilter>() != null)
+                        {
+                            foreach (MeshFilter mf in asset.CreatureLoaders[0].LoadedAsset.GetComponentsInChildren<MeshFilter>())
+                            {
+                                Bounds bounds = mf.mesh.bounds;
+                                if (bounds != null)
+                                {
+                                    yMin = Math.Min(yMin, bounds.min.y);
+                                    yMax = Math.Max(yMax, bounds.max.y);
+                                    if (diagnostic) { Debug.Log("Mesh " + mf.mesh.name + ": Bounds " + mf.mesh.bounds.min.y + "->" + mf.mesh.bounds.max.y+" | Max: "+yMax); }
+                                }
+                            }
+                            foreach (MeshRenderer mr in asset.CreatureLoaders[0].LoadedAsset.GetComponentsInChildren<MeshRenderer>())
+                            {
+                                Bounds bounds = mr.bounds;
+                                if (bounds != null)
+                                {
+                                    yMin = Math.Min(yMin, bounds.min.y);
+                                    yMax = Math.Max(yMax, bounds.max.y);
+                                    if (diagnostic) { Debug.Log("Mesh " + mr.name + ": Bounds " + mr.bounds.min.y + "->" + mr.bounds.max.y + " | Max: " + yMax); }
+                                }
+                            }
+                            foreach (SkinnedMeshRenderer smr in asset.CreatureLoaders[0].LoadedAsset.GetComponentsInChildren<SkinnedMeshRenderer>())
+                            {
+                                Bounds bounds = smr.bounds;
+                                if (bounds != null)
+                                {
+                                    yMin = Math.Min(yMin, bounds.min.y);
+                                    yMax = Math.Max(yMax, bounds.max.y);
+                                    if (diagnostic) { Debug.Log("Mesh " + smr.name + ": Bounds " + smr.bounds.min.y + "->" + smr.bounds.max.y + " | Max: " + yMax); }
+                                }
+                            }
+                        }
 
-                if (asset.CreatureLoaders[0].LoadedAsset.GetComponentInChildren<MeshRenderer>() != null)
-                {
-                    yMax = asset.CreatureLoaders[0].LoadedAsset.GetComponent<MeshRenderer>().bounds.max.y;
-                }
-                else if (asset.CreatureLoaders[0].LoadedAsset.GetComponentInChildren<SkinnedMeshRenderer>() != null)
-                {
-                    yMax = asset.CreatureLoaders[0].LoadedAsset.GetComponent<SkinnedMeshRenderer>().bounds.max.y;
-                }
-
-                // Legacy CMP Support
-                GameObject cmpGO = GameObject.Find("CustomContent:" + asset.Creature.CreatureId);
-                if (cmpGO.GetComponentInChildren<MeshRenderer>() != null)
-                {
-                    yMax = Math.Max(yMax,cmpGO.GetComponent<MeshRenderer>().bounds.max.y);
-                }
-                else if (cmpGO.GetComponentInChildren<SkinnedMeshRenderer>() != null)
-                {
-                    yMax = Math.Max(yMax,cmpGO.GetComponent<SkinnedMeshRenderer>().bounds.max.y);
+                        // Legacy CMP Support
+                        GameObject cmpGO = GameObject.Find("CustomContent:" + asset.Creature.CreatureId);
+                        if (cmpGO != null)
+                        {
+                            if (cmpGO.GetComponentInChildren<MeshFilter>() != null)
+                            {
+                                foreach (MeshFilter mf in cmpGO.GetComponentsInChildren<MeshFilter>())
+                                {
+                                    Bounds bounds = cmpGO.GetComponentInChildren<MeshFilter>().mesh.bounds;
+                                    if (bounds != null)
+                                    {
+                                        yMin = Math.Min(yMin, bounds.min.y);
+                                        yMax = Math.Max(yMax, bounds.max.y);
+                                        if (diagnostic) { Debug.Log("Mesh " + cmpGO.GetComponentInChildren<MeshFilter>().mesh.name + ": Bounds " + cmpGO.GetComponentInChildren<MeshFilter>().mesh.bounds.min.y + "->" + cmpGO.GetComponentInChildren<MeshFilter>().mesh.bounds.max.y + " | Max: " + yMax); }
+                                    }
+                                }
+                            }
+                        }
+                        break;
                 }
             }
-            catch (Exception) { ; }
+            catch (Exception x) 
+            {
+                Debug.Log("States Plugin: Exception");
+                Debug.LogException(x);
+                yMin = 0;
+                yMax = 1;
+            }
 
-            return yMax;
+            return yMax * offsetValue;
         }
 
         /// <summary>
