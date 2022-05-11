@@ -10,6 +10,7 @@ Thanks to @AlbrechtWM for the latest States Plugin updates.
 ## Change Log
 
 ```
+3.0.0: Fix after BR HF Integration update
 2.5.1: Fixed bug with remaining text after creature is deleted
 2.5.0: Fixed bug with vertial positioning.
 2.4.0: Optimized handling.
