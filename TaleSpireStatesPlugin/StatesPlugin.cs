@@ -19,7 +19,7 @@ namespace LordAshes
         // Plugin info
         public const string Name = "States Plug-In";
         public const string Guid = "org.lordashes.plugins.states";
-        public const string Version = "3.0.0.0";
+        public const string Version = "3.1.0.0";
 
         // Configuration
         private ConfigEntry<KeyboardShortcut> triggerKey { get; set; }
@@ -104,24 +104,6 @@ namespace LordAshes
                     SetRequest(LocalClient.SelectedCreatureId);
                 }
 
-                /*
-                if(Input.GetKeyDown(KeyCode.Q))
-                {
-                    CreatureBoardAsset asset;
-                    CreaturePresenter.TryGetAsset(LocalClient.SelectedCreatureId, out asset);
-                    if (asset != null)
-                    {
-                        Debug.Log("Creature Name: " + StatMessaging.GetCreatureName(asset));
-                        Debug.Log("Creature Cid:  " + asset.CreatureId);
-                        Debug.Log("Creature Scale:" + asset.CreatureScale.ToString());
-                        Debug.Log("Creature Fix:  " + offsetValue);
-                        Debug.Log("Creature SBFix:" + asset.CreatureScale*offsetValue);
-                        Debug.Log("Creature HHFix:" + asset.HookHead.position.y * offsetValue);
-                        Debug.Log("Creature Offset: " + calculateYPos(asset, true));
-                    }
-                }
-                */
-
                 foreach (CreatureBoardAsset asset in CreaturePresenter.AllCreatureAssets)
                 {
                     try
@@ -135,7 +117,7 @@ namespace LordAshes
                             TextMeshPro creatureStateText = creatureBlock.GetComponent<TextMeshPro>();
                             if (creatureStateText == null) { creatureStateText = creatureBlock.AddComponent<TextMeshPro>(); }
                             creatureStateText.transform.rotation = creatureBlock.transform.rotation;
-                            creatureStateText.transform.position = new Vector3(Utility.GetRootObject(asset.CreatureId).transform.position.x, calculateYPos(asset) + creatureStateText.preferredHeight, Utility.GetRootObject(asset.CreatureId).transform.position.z);
+                            creatureStateText.transform.position = new Vector3(Utility.GetBaseLoader(asset.CreatureId).transform.position.x, calculateYPos(asset) + creatureStateText.preferredHeight, Utility.GetBaseLoader(asset.CreatureId).transform.position.z);
                         }
                     }
                     catch (Exception) { }
@@ -150,7 +132,7 @@ namespace LordAshes
 
                     if (asset != null)
                     {
-                        if (Utility.GetAssetObject(asset.CreatureId) == null)
+                        if (Utility.GetAssetLoader(asset.CreatureId) == null)
                         {
                             //still not ready
                             break;
@@ -236,14 +218,14 @@ namespace LordAshes
             Debug.Log("States Plugin: Checking Source");
             if (asset != null)
             {
-                if (Utility.GetRootObject(asset.CreatureId) != null)
+                if (Utility.GetBaseLoader(asset.CreatureId) != null)
                 {
-                    if (Utility.GetRootObject(asset.CreatureId).transform != null)
+                    if (Utility.GetBaseLoader(asset.CreatureId).transform != null)
                     {
                         Debug.Log("States Plugin: Creating Creature Block");
 
-                        Vector3 pos = Utility.GetRootObject(asset.CreatureId).transform.position;
-                        Vector3 rot = Utility.GetRootObject(asset.CreatureId).transform.eulerAngles;
+                        Vector3 pos = Utility.GetBaseLoader(asset.CreatureId).transform.position;
+                        Vector3 rot = Utility.GetBaseLoader(asset.CreatureId).transform.eulerAngles;
 
                         if (creatureBlock != null)
                         {
@@ -313,7 +295,7 @@ namespace LordAshes
             creatureStateText.text = content;
             creatureStateText.autoSizeTextContainer = true;
 
-            creatureStateText.transform.position = new Vector3(Utility.GetRootObject(asset.CreatureId).transform.position.x, calculateYPos(asset) + creatureStateText.preferredHeight, Utility.GetRootObject(asset.CreatureId).transform.position.z);
+            creatureStateText.transform.position = new Vector3(Utility.GetBaseLoader(asset.CreatureId).transform.position.x, calculateYPos(asset) + creatureStateText.preferredHeight, Utility.GetBaseLoader(asset.CreatureId).transform.position.z);
         }
 
         private float calculateYPos(CreatureBoardAsset asset, bool diagnostic = false)
@@ -338,9 +320,9 @@ namespace LordAshes
                         yMax = asset.HookHead.position.y;
                         break;
                     case OffsetMethod.boundsOffset:
-                        if (Utility.GetAssetObject(asset.CreatureId).GetComponentInChildren<MeshFilter>() != null)
+                        if (Utility.GetAssetLoader(asset.CreatureId).GetComponentInChildren<MeshFilter>() != null)
                         {
-                            foreach (MeshFilter mf in Utility.GetAssetObject(asset.CreatureId).GetComponentsInChildren<MeshFilter>())
+                            foreach (MeshFilter mf in Utility.GetAssetLoader(asset.CreatureId).GetComponentsInChildren<MeshFilter>())
                             {
                                 Bounds bounds = mf.mesh.bounds;
                                 if (bounds != null)
@@ -350,7 +332,7 @@ namespace LordAshes
                                     if (diagnostic) { Debug.Log("Mesh " + mf.mesh.name + ": Bounds " + mf.mesh.bounds.min.y + "->" + mf.mesh.bounds.max.y+" | Max: "+yMax); }
                                 }
                             }
-                            foreach (MeshRenderer mr in Utility.GetAssetObject(asset.CreatureId).GetComponentsInChildren<MeshRenderer>())
+                            foreach (MeshRenderer mr in Utility.GetAssetLoader(asset.CreatureId).GetComponentsInChildren<MeshRenderer>())
                             {
                                 Bounds bounds = mr.bounds;
                                 if (bounds != null)
@@ -360,7 +342,7 @@ namespace LordAshes
                                     if (diagnostic) { Debug.Log("Mesh " + mr.name + ": Bounds " + mr.bounds.min.y + "->" + mr.bounds.max.y + " | Max: " + yMax); }
                                 }
                             }
-                            foreach (SkinnedMeshRenderer smr in Utility.GetAssetObject(asset.CreatureId).GetComponentsInChildren<SkinnedMeshRenderer>())
+                            foreach (SkinnedMeshRenderer smr in Utility.GetAssetLoader(asset.CreatureId).GetComponentsInChildren<SkinnedMeshRenderer>())
                             {
                                 Bounds bounds = smr.bounds;
                                 if (bounds != null)

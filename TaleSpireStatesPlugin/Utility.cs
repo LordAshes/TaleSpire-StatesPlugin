@@ -58,48 +58,28 @@ namespace LordAshes
         }
 
         /// <summary>
-        /// Method to obtain the Asset Loader Game Object based on a CreatureGuid
-        /// </summary>
-        /// <param name="cid">Creature Guid</param>
-        /// <returns>AssetLoader Game Object</returns>
-        public static GameObject GetRootObject(CreatureGuid cid)
-        {
-            CreatureBoardAsset asset = null;
-            CreaturePresenter.TryGetAsset(cid, out asset);
-            if (asset != null)
-            {
-                Type cba = typeof(CreatureBoardAsset);
-                foreach (FieldInfo fi in cba.GetRuntimeFields())
-                {
-                    if (fi.Name == "_creatureRoot")
-                    {
-                        Transform obj = (Transform)fi.GetValue(asset);
-                        return obj.gameObject;
-                    }
-                }
-            }
-            return null;
-        }
-
-        /// <summary>
         /// Method to obtain the Base Loader Game Object based on a CreatureGuid
         /// </summary>
         /// <param name="cid">Creature Guid</param>
         /// <returns>BaseLoader Game Object</returns>
-        public static GameObject GetBaseObject(CreatureGuid cid)
+        public static GameObject GetBaseLoader(CreatureGuid cid)
         {
             CreatureBoardAsset asset = null;
             CreaturePresenter.TryGetAsset(cid, out asset);
             if (asset != null)
             {
-                Type cba = typeof(CreatureBoardAsset);
-                foreach (FieldInfo fi in cba.GetRuntimeFields())
+                CreatureBase _base = null;
+                StartWith<CreatureBase>(asset, "_base", ref _base);
+                Transform baseLoader = null;
+                Traverse(_base.transform, "BaseLoader", ref baseLoader);
+                if (baseLoader != null)
                 {
-                    if (fi.Name == "_base")
-                    {
-                        CreatureBase obj = (CreatureBase)fi.GetValue(asset);
-                        return obj.transform.GetChild(0).gameObject;
-                    }
+                    return baseLoader.GetChild(0).gameObject;
+                }
+                else
+                {
+                    Debug.LogWarning("Character View Plugin: Could Not Find Base Loader");
+                    return null;
                 }
             }
             return null;
@@ -110,23 +90,52 @@ namespace LordAshes
         /// </summary>
         /// <param name="cid">Creature Guid</param>
         /// <returns>AssetLoader Game Object</returns>
-        public static GameObject GetAssetObject(CreatureGuid cid)
+        public static GameObject GetAssetLoader(CreatureGuid cid)
         {
             CreatureBoardAsset asset = null;
             CreaturePresenter.TryGetAsset(cid, out asset);
             if (asset != null)
             {
-                Type cba = typeof(CreatureBoardAsset);
-                foreach (FieldInfo fi in cba.GetRuntimeFields())
+                Transform _creatureRoot = null;
+                StartWith(asset, "_creatureRoot", ref _creatureRoot);
+                Transform assetLoader = null;
+                Traverse(_creatureRoot, "AssetLoader", ref assetLoader);
+                if (assetLoader != null)
                 {
-                    if (fi.Name == "_creatureRoot")
-                    {
-                        Transform obj = (Transform)fi.GetValue(asset);
-                        return obj.GetChild(0).GetChild(2).GetChild(0).gameObject;
-                    }
+                    return assetLoader.GetChild(0).gameObject;
+                }
+                else
+                {
+                    Debug.LogWarning("Character View Plugin: Could Not Find Asset Loader");
+                    return null;
                 }
             }
             return null;
+        }
+
+        public static void StartWith<T>(CreatureBoardAsset asset, string seek, ref T match)
+        {
+            Type type = typeof(CreatureBoardAsset);
+            match = default(T);
+            foreach (FieldInfo fi in type.GetRuntimeFields())
+            {
+                if (fi.Name == seek)
+                {
+                    match = (T)fi.GetValue(asset);
+                    break;
+                }
+            }
+        }
+
+        public static void Traverse(Transform root, string seek, ref Transform match)
+        {
+            // Debug.Log("Seeking Child Named '" + seek + "'. Found '" + root.name + "'");
+            if (match != null) { return; }
+            if (root.name == seek) { match = root; return; }
+            foreach (Transform child in root.Children())
+            {
+                Traverse(child, seek, ref match);
+            }
         }
     }
 }
